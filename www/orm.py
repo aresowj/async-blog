@@ -66,8 +66,8 @@ def execute(sql, args):
 			raise
 		return affected		#Return rows affected
 
-#The instance of Model will be substantiated with the __new__ method in metaclass ModelMetaclass
-class ModelMetaclass(type):
+#The instance of Model will be substantiated with the __new__ method in metaclass ModelMetaClass
+class ModelMetaClass(type):
 	def __new__(cls, name, bases, attrs):
 		#Excluding the Model class itself
 		if name == 'Model':
@@ -82,7 +82,7 @@ class ModelMetaclass(type):
 		for k, v in attrs.items():
 			if isinstance(v, Field):
 				logging.info('	Found mapping: %s => %s' % (k, v))
-				mappings[k] = v
+				mappings[k] = v		#Store the mapping if v is a Field instance
 				if v.primary_key:
 					#Primary Key found
 					if primaryKey:
@@ -90,10 +90,10 @@ class ModelMetaclass(type):
 					primaryKey = k
 				else:
 					fields.append(k)
-			if not primaryKey:
+			if not primaryKey:		#Must get a primary key
 				raise RuntimeError('Primary key not found.')
 			for k in mappings.keys():
-				attrs.pop(k)
+				attrs.pop(k)	#Remove all the elements processed.
 			escaped_fields = list(map(lambda f: '`%s`' % f, fields))
 			attrs['__mappings__'] = mappings
 			attrs['__table__'] = tableName
@@ -103,12 +103,12 @@ class ModelMetaclass(type):
 			attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
 			attrs['__insert__'] = 'insert into `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
 			attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
-			return type.__new__(cls, name, bases, attrs)
+			return type.__new__(cls, name, bases, attrs)	#Pass the new attrs to the subclass
 
-#Create a class using metaclass ModelMetaclass		
-class Model(dict, metaclass=ModelMetaclass):
+#Create a class using metaclass ModelMetaClass		
+class Model(dict, metaclass=ModelMetaClass):
 	def __init__(self, **kw):
-		super(Model, self).__init__(**kw)	#Using init() in ModelMetaclass
+		super(Model, self).__init__(**kw)	#Using init() in ModelMetaClass
 		
 	def __getattr__(self, key):
 		try:
@@ -131,6 +131,23 @@ class Model(dict, metaclass=ModelMetaclass):
 				logging.debug('Using default value for %s: %s' & (key, str(value)))
 				setattr(self, key, value)
 		return value
+		
+	@classmethod
+	@asyncio.coroutine
+	def find(cls, pk):
+		'''Find object by primary key.'''
+		rs = yield from select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
+		if len(rs) == 0:
+			return None
+		return cls(**rs[0])
+		
+	@asyncio.coroutine
+	def save(self):
+		args = list(map(self.getValueOrDefault, self.__fields__))
+		args.append(self.getValueOrDefault(self.__primary_key__))
+		rows = yield from execute(self.__insert__, args)
+		if rows != 1:
+			logging.warn('Failed to insert record: affected rows: %s' % rows)
 	
 class Field(object):
 	def __init__(self, name, column_type, primary_key, default):
@@ -145,4 +162,20 @@ class Field(object):
 class StringField(Field):
 	def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
 		super().__init__(name, ddl, primary_key, default)
+		
+class BooleanField(Field):
+	def __init__(self, name=None, default=False):
+		super().__init__(name, 'boolean', False, default)
+		
+class FloatField(Field):
+	def __init__(self, name=None, primary_key=False, default=0.0):
+		super().__init__(name, 'real', primary_key, default)
+	
+class IntegerField(Field):
+	def __init__(self, name=None, primary_key=False, default=0)
+		super().__init__(name, 'bigint', primary_key, default)
+		
+class TextField(Field):
+	def __init__(self, name=None, default=None):
+		super().__init__(name, 'text', False, default)
 		
