@@ -48,6 +48,7 @@ def init_jinja2(app, **kw):
 	if filters is not None:
 		for name, f in filters.items():
 			env.filters[name] = f
+	
 	app['__templating__'] = env		#Add jinja2 to the app for templating
 
 def datetime_filter(t):
@@ -139,10 +140,14 @@ def init(loop):
 	init_jinja2(app, filters=dict(datetime=datetime_filter))	#Initialize jinja2
 	add_routes(app, 'handlers')		#When being requested the root folder by GET method, call index()
 	add_static(app)
-	srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 80)
+	srv = yield from loop.create_server(app.make_handler(), 'localhost', 8080)
 	logging.info('Server started at http://127.0.0.1:80...')
 	return srv
-	
-loop = asyncio.get_event_loop()
-loop.run_until_complete(init(loop))
-loop.run_forever()
+
+def application():
+	loop = asyncio.get_event_loop()
+	loop.run_until_complete(init(loop))
+	loop.run_forever()
+
+if __name__ == '__main__':
+	application()
