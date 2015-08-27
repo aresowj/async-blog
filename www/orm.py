@@ -12,6 +12,16 @@ logging.basicConfig(level=logging.INFO)		#Reporting events occur during normal o
 
 import asyncio, aiomysql
 
+def log(sql, args=()):
+    logging.info('SQL: %s' % sql)
+
+def create_args_string(length):
+	L = []
+	for n in range(length):
+		L.append('?')
+		
+	return ', '.join(L)
+
 #Create connection pool
 @asyncio.coroutine
 def create_pool(loop, **kw):
@@ -24,7 +34,8 @@ def create_pool(loop, **kw):
 		host = kw.get('host', 'localhost'),
 		port = kw.get('port', 3306),
 		user = kw['user'],	#Must be provided
-		password = kw['db'],
+		password = kw['password'],
+		db = kw['db'],
 		charset = kw.get('charset', 'utf8'),
 		autocommit = kw.get('autocommit', True),
 		maxsize = kw.get('maxsize', 10),
@@ -77,7 +88,7 @@ class ModelMetaClass(type):
 		logging.info('Found model: %s (table: %s)' % (name, tableName))
 		#Get all the Field and Primary Keys
 		mappings = dict()
-		fileds = []
+		fields = []
 		primaryKey = None
 		for k, v in attrs.items():
 			if isinstance(v, Field):
@@ -89,21 +100,31 @@ class ModelMetaClass(type):
 						raise RuntimeError('Duplicate primary key for field: %s' % k)
 					primaryKey = k
 				else:
-					fields.append(k)
-			if not primaryKey:		#Must get a primary key
-				raise RuntimeError('Primary key not found.')
-			for k in mappings.keys():
-				attrs.pop(k)	#Remove all the elements processed.
-			escaped_fields = list(map(lambda f: '`%s`' % f, fields))
-			attrs['__mappings__'] = mappings
-			attrs['__table__'] = tableName
-			attrs['__primary_key__'] = primaryKey
-			attrs['__fields__'] = fields
-			#Constructing default syntax for select, insert, update and delete
-			attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
-			attrs['__insert__'] = 'insert into `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
-			attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
-			return type.__new__(cls, name, bases, attrs)	#Pass the new attrs to the subclass
+					fields.append(k)	#Append elements not primary key into the fields list
+		if not primaryKey:		#Must get a primary key
+			raise RuntimeError('Primary key not found.')
+		for k in mappings.keys():
+			attrs.pop(k)	#Remove all the elements processed.
+		escaped_fields = list(map(lambda f: '`%s`' % f, fields))	#Generate a list of attributes transferred to str for SQL
+		
+		#Re-define the attrs for passing to the new class
+		attrs['__mappings__'] = mappings
+		attrs['__table__'] = tableName
+		attrs['__primary_key__'] = primaryKey
+		attrs['__fields__'] = fields
+		#Constructing default syntax for select, insert, update and delete
+		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
+		
+		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (
+			tableName, 		#First parameter
+			', '.join(escaped_fields), 		#List of columns
+			primaryKey, 	#Put primary key at last
+			create_args_string(len(escaped_fields)+1)
+			)
+		
+		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
+		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
+		return type.__new__(cls, name, bases, attrs)	#Pass the new attrs to the subclass
 
 #Create a class using metaclass ModelMetaClass		
 class Model(dict, metaclass=ModelMetaClass):
@@ -127,12 +148,40 @@ class Model(dict, metaclass=ModelMetaClass):
 		if value is None:
 			field = self.__mappings__[key]
 			if field.default is not None:
-				value = field.default() if callable(filed.default) else field.default
-				logging.debug('Using default value for %s: %s' & (key, str(value)))
+				value = field.default() if callable(field.default) else field.default
+				logging.debug('Using default value for %s: %s' % (key, str(value)))
 				setattr(self, key, value)
 		return value
 		
 	@classmethod
+	def findAll(cls, where=None, args=None, **kw):
+		'''
+		Find objects by where clause.'
+		'''
+		sql = [cls.__select__]
+		if where:
+			sql.append('where')
+			sql.append(where)
+		if args is None:
+			args = []
+		orderBy = kw.get('orderBy', None)
+		if orderBy:
+			sql.append('order by')
+			sql.append(orderBy)
+		limit = kw.get('limit', None)
+		if limit is not None:
+			sql.append('limit')
+			if isinstance(limit, int):
+				sql.append('?')
+				args.append(limit)
+			elif isinstance(limit, tuple) and len(limit) == 2:
+				sql.append('?, ?')
+				args.extend(limit)
+			else:
+				raise ValueError('Invalid limit value: %s' % str(limit))
+		rs = yield from select(' '.join(sql), args)
+		return [cls(**r) for r in rs]
+		
 	@asyncio.coroutine
 	def find(cls, pk):
 		'''Find object by primary key.'''
@@ -172,7 +221,7 @@ class FloatField(Field):
 		super().__init__(name, 'real', primary_key, default)
 	
 class IntegerField(Field):
-	def __init__(self, name=None, primary_key=False, default=0)
+	def __init__(self, name=None, primary_key=False, default=0):
 		super().__init__(name, 'bigint', primary_key, default)
 		
 class TextField(Field):
