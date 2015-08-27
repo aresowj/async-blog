@@ -12,7 +12,7 @@ configs = {
         'port': 3306,
         'user': 'root',
         'password': 'kagami',
-        'database': 'aresou'
+        'db': 'aresou'
     },
     'session': {
         'secret': 'AresOu'

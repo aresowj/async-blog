@@ -8,7 +8,6 @@ Using aoimysql to keep implementing async methods in all program layers.
 '''
 
 import logging
-logging.basicConfig(level=logging.INFO)		#Reporting events occur during normal opeartion.
 
 import asyncio, aiomysql
 

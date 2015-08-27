@@ -2,11 +2,12 @@
 __author__ = 'aresowj'
 
 '''
-handlers, to be filled.
+URL handlers, to be filled.
 '''
 
 import re, time, json, logging, hashlib, base64, asyncio
 from coroweb import get, post
+from models import User, Comment, Blog, next_id
 
 @get('/')
 def index(request):

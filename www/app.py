@@ -21,16 +21,10 @@ from config import configs
 import orm
 from coroweb import add_routes, add_static
 
-def index(request):
-	'''
-	Response function for index requests.
-	'''
-	return web.Response(body=b'<h1>Welcome to AresOu.net</h1>')
-
 def init_jinja2(app, **kw):
-	'''
+	"""
 	Initialize jinja2 by creating an Environment.
-	'''
+	"""
 	logging.info('Initializing jinja2...')
 	options = dict(
 		autoescape = kw.get('autoescape', True),
@@ -44,18 +38,22 @@ def init_jinja2(app, **kw):
 	path = kw.get('path', None)
 	if path is None:
 		path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+
 	logging.info('Jinja2 template path set to: %s' % path)
+	
 	env = Environment(loader=FileSystemLoader(path), **options)
+	
 	filters = kw.get('filters', None)
+	
 	if filters is not None:
 		for name, f in filters.items():
 			env.filters[name] = f
 	app['__templating__'] = env		#Add jinja2 to the app for templating
 
 def datetime_filter(t):
-	'''
+	"""
 	Datetime filter, transforming time to formatted strings.
-	'''
+	"""
 	#delta is in seconds
 	delta = int(time.time() - t) 	#Calculate the difference between t and the time when page loaded.
 	
@@ -73,9 +71,9 @@ def datetime_filter(t):
 
 @asyncio.coroutine
 def logger_factory(app, handler):
-	'''
+	"""
 	Middleware for logging.
-	'''
+	"""
 	
 	@asyncio.coroutine
 	def logger(request):
@@ -85,10 +83,9 @@ def logger_factory(app, handler):
 
 @asyncio.coroutine
 def response_factory(app, handler):
-	'''
+	"""
 	Middleware for response.
-	'''
-	
+	"""
 	@asyncio.coroutine
 	def response(request):
 		logging.info('Response handler...')
@@ -108,7 +105,7 @@ def response_factory(app, handler):
 		if isinstance(r, dict):
 			template = r.get('__template__')
 			if template is None:
-				resp = web.Response(body=json.dumps(r, ensure_ascii=False, default=lambda o:o.__dict__).encode('utf-8'))
+				resp = web.Response(body=json.dumps(r, ensure_ascii=False, default=lambda o: o.__dict__).encode('utf-8'))
 				resp.content_type = 'application/json;charset=utf-8'
 				return resp
 			else:
@@ -130,10 +127,12 @@ def response_factory(app, handler):
 
 @asyncio.coroutine
 def init(loop):
-	'''
+	"""
 	Initiation function for the whole app.
 	Using Coroutine at this point.
-	'''
+	"""
+	
+	yield from orm.create_pool(loop=loop, **configs.db)
 	app = web.Application(loop=loop, middlewares=[
 		logger_factory, response_factory
 		])	#Passing the main loop and middlewares to app.
