@@ -29,7 +29,7 @@ def post(path):
     '''
     
     def decorator(func):
-        @functools.wrap(func)
+        @functools.wraps(func)
         def wrapper(*args, **kw):
             return func(*args, **kw)
             
