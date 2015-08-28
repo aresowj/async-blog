@@ -6,3 +6,4 @@ Based and modified on the web framework of Awesome Python Web App authored by Mi
 - Async IO and MySQl operation
 - Modern MVC Design
 - API integrated
+- uikit CSS library inegrated
