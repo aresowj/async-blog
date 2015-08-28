@@ -153,6 +153,7 @@ class Model(dict, metaclass=ModelMetaClass):
 		return value
 		
 	@classmethod
+	@asyncio.coroutine
 	def findAll(cls, where=None, args=None, **kw):
 		'''
 		Find objects by where clause.'
@@ -180,6 +181,19 @@ class Model(dict, metaclass=ModelMetaClass):
 				raise ValueError('Invalid limit value: %s' % str(limit))
 		rs = yield from select(' '.join(sql), args)
 		return [cls(**r) for r in rs]
+		
+	@asyncio.coroutine
+	def findNumber(cls, selectField, where=None, args=None):
+		"""
+		Find number with a specified field
+		"""
+		sql = [cls.__select__]
+		if where:
+			sql.append('where')
+			sql.append(where)
+		
+		rs = yield from select(' '.join(sql))
+		return [cls(**r)]
 		
 	@asyncio.coroutine
 	def find(cls, pk):
