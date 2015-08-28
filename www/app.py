@@ -140,8 +140,8 @@ def init(loop):
 	init_jinja2(app, filters=dict(datetime=datetime_filter))	#Initialize jinja2
 	add_routes(app, 'handlers')		#When being requested the root folder by GET method, call index()
 	add_static(app)
-	srv = yield from loop.create_server(app.make_handler(), 'localhost', 8080)
-	logging.info('Server started at http://127.0.0.1:80...')
+	srv = yield from loop.create_server(app.make_handler(), '0.0.0.0', 8080)
+	logging.info('Server started at http://127.0.0.1:8080...')
 	return srv
 
 def application():
