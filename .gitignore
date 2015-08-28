@@ -44,3 +44,4 @@ Temporary Items
 *.pyc
 *.bat
 *.zip
+database_init_pythonanywhere.sql
