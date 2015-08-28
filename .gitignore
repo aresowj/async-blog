@@ -45,3 +45,4 @@ Temporary Items
 *.bat
 *.zip
 database_init_pythonanywhere.sql
+www/test.py
