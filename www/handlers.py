@@ -20,9 +20,11 @@ def index(request):
         Blog(id='2', name='Something New', summary=summary, created_time=time.time()-3600),
         Blog(id='3', name='Learn Swift', summary=summary, created_time=time.time()-7200)
     ]
+    users = yield from User.findAll()
     return {
-        '__template__': 'blogs.html',
-        'blogs': blogs
+        '__template__': 'test.html',
+        'blogs': blogs,
+        'users': users,
     }
     
 @get('/api/users')
@@ -54,10 +56,15 @@ def api_register_user(*, email, name, password):
     user = User(id=uid, name=name.strip(), email=email, password=hashlib.sha1(sha1_password.encode('utf-8')).hexdigest(), image='http://www.gravatar.com/avatar/%s?d=mm&s=120' % hashlib.md5(email.encode('utf-8')).hexdigest())
     yield from user.save()
     #Make session cookie
-    r = web.Response()
+    '''r = web.Response()
     r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
     user.password = '******'
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
-    return r
->>>>>>> b9e733b3881de23b67e85be772ae0c50ea6b6a35
+    return r'''
+
+@get('/register')
+def register_user(request):
+    return {
+        '__template__' : 'register.html',
+    }
