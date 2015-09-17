@@ -1,0 +1,38 @@
+/*
+CSS for aresou.net
+written by aresowj
+*/
+
+.top-navbar {
+	background-color: AliceBlue;
+}
+
+.navbar-brand a {
+	display: inline;
+}
+
+.navbar-nav ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.navbar-nav li {
+	display: inline;
+	list-style-type: none;
+	padding: 5px;
+	margin: 5px;
+}
+
+.navbar-nav a {
+	text-decoration: none;
+	color: black;
+}
+
+.container-center {
+	align: center;
+}
+
+.general-footer {
+	clear: center;
+}

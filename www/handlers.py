@@ -54,11 +54,9 @@ def index(request):
         Blog(id='2', name='Something New', summary=summary, created_time=time.time()-3600),
         Blog(id='3', name='Learn Swift', summary=summary, created_time=time.time()-7200)
     ]
-    users = yield from User.findAll()
     return {
-        '__template__': 'test.html',
+        '__template__': 'blogs.html',
         'blogs': blogs,
-        'users': users,
     }
     
 @get('/api/users')
