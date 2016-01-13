@@ -1,4 +1,4 @@
-# aresou.net
+# Async blog in Python
 A python blog app using async methods.
 Based and modified on the web framework of Awesome Python Web App authored by Michael Liao (https://github.com/michaelliao/awesome-python3-webapp).
 
